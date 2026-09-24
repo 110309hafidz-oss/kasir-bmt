@@ -24,16 +24,15 @@ $menu = [
 <body>
 <div class="app">
   <aside class="sidebar">
+    
+    <!-- ============================================ -->
+    <!-- BRAND / LOGO (SUDAH DIPERBAIKI)              -->
+    <!-- ============================================ -->
     <div class="brand">
       <div class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M12 2l2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 16l-5.6 3.1 1.4-6.3L3 8.5l6.4-.6L12 2z"/>
-        </svg>
+        <img src="assets/logo.png" alt="Logo" class="brand-logo">
       </div>
       <div class="brand-text">
-        <div>
-          
-        </div>
         <strong>Asfie Mart</strong>
         <small>Baitul Maal wat Tamwil</small>
       </div>

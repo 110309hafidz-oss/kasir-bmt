@@ -119,32 +119,80 @@ button { font-family:inherit; }
   pointer-events:none;
 }
 
+/* ============================================================
+   BRAND / LOGO SIDEBAR (UPDATED: Center & Bigger)
+   ============================================================ */
+/* ============================================================
+   BRAND / LOGO SIDEBAR (UPDATED: Bigger & Auto Fit)
+   ============================================================ */
+/* ============================================================
+   BRAND / LOGO SIDEBAR (AUTO ADJUST)
+   ============================================================ */
+/* ============================================================
+   LOGO SIDEBAR — AUTO ADJUST
+   ============================================================ */
+
 .brand{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  padding:0 20px 20px;
-  border-bottom:1px solid rgba(255,255,255,.09);
-  position:relative;
-  z-index:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    padding:0 16px 24px;
+    border-bottom:1px solid rgba(255,255,255,.09);
+    position:relative;
+    z-index:1;
+    text-align:center;
 }
+
+/* Lingkaran logo otomatis */
 .brand-mark{
-  width:42px; height:42px;
-  border-radius:12px;
-  flex:none;
-  background:linear-gradient(135deg, var(--gold), var(--gold-dark));
-  display:grid; place-items:center;
-  color:#3b2f00;
-  box-shadow:0 4px 12px -4px rgba(212,175,55,.6);
-  animation:pulseGold 3s ease-in-out infinite;
+    width:clamp(90px, 10vw, 140px);
+    aspect-ratio:1 / 1;
+    border-radius:50%;
+
+    background:#fff;
+    border:4px solid var(--gold);
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    overflow:hidden;
+    flex:none;
+
+    box-shadow:0 8px 20px -4px rgba(0,0,0,.5);
 }
-@keyframes pulseGold{
-  0%,100%{ box-shadow:0 4px 12px -4px rgba(212,175,55,.6); }
-  50%    { box-shadow:0 4px 20px -2px rgba(212,175,55,.9); }
+
+/* Gambar logo otomatis mengikuti lingkaran */
+.brand-logo{
+    width:100%;
+    height:100%;
+
+    object-fit:contain;
+    object-position:center;
+
+    padding: auto;
+    display:block;
 }
-.brand-mark svg { width:24px; height:24px; }
-.brand-text strong { display:block; color:#fff; font-size:15px; letter-spacing:.2px; }
-.brand-text small { color:#6ee7b7; font-size:11px; letter-spacing:.4px; }
+
+.brand-text strong { 
+  display: block; 
+  color: #fff; 
+  font-size: 16px; 
+  letter-spacing: .2px; 
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.brand-text small { 
+  color: #6ee7b7; 
+  font-size: 11.5px; 
+  letter-spacing: .4px; 
+  display: block;
+  text-align: center;
+}
+/* ============================================================ */
 
 .nav{
   flex:1;
