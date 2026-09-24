@@ -34,7 +34,7 @@ $menu = [
         <div>
           
         </div>
-        <strong>Asvie Mart</strong>
+        <strong>Fakhri</strong>
         <small>Baitul Maal wat Tamwil</small>
       </div>
     </div>
