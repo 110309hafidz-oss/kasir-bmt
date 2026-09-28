@@ -51,7 +51,7 @@ require_once 'includes/header.php';
 
 <div class="stats">
   <div class="stat">
-    <div class="stat-label">Penjualan Hari Ini</div>
+    <div class="stat-label">fakhri</div>
     <div class="stat-value"><?= rupiah($trxHariIni['nominal']) ?></div>
     <div class="stat-sub"><?= (int)$trxHariIni['jml'] ?> transaksi</div>
   </div>
