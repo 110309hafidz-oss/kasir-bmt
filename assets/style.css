@@ -119,6 +119,73 @@ button { font-family:inherit; }
   pointer-events:none;
 }
 
+<<<<<<< HEAD
+=======
+/* ============================================================
+   BRAND / LOGO SIDEBAR (UPDATED: Center & Bigger)
+   ============================================================ */
+/* ============================================================
+   BRAND / LOGO SIDEBAR (UPDATED: Bigger & Auto Fit)
+   ============================================================ */
+/* ============================================================
+   BRAND / LOGO SIDEBAR (AUTO ADJUST)
+   ============================================================ */
+/* ============================================================
+   LOGO SIDEBAR — AUTO ADJUST
+   ============================================================ */
+
+/* ============================================================
+   BRAND / LOGO SIDEBAR — DIPERKECIL & DIGESER KE ATAS
+   ============================================================ */
+
+.brand{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;   /* konten mulai dari atas */
+    gap:8px;                      /* jarak logo ke teks lebih rapat */
+    padding:0 16px 20px;          /* padding atas dikurangi */
+    margin-top:-8px;              /* tarik ke atas sedikit */
+    border-bottom:1px solid rgba(255,255,255,.09);
+    position:relative;
+    z-index:1;
+    text-align:center;
+}
+
+/* Logo diperkecil dan tanpa frame */
+.brand-logo{
+    width:110px;                  /* sebelumnya 100% — sekarang fix kecil */
+    height:auto;
+    max-height:110px;
+    object-fit:contain;
+    object-position:center;
+    display:block;
+    background:none;              /* hilangkan background putih */
+    border:none;                  /* hilangkan border */
+    border-radius:0;              /* hilangkan bulat */
+    box-shadow:none;              /* hilangkan bayangan */
+    padding:0;
+}
+
+.brand-text strong { 
+  display: block; 
+  color: #fff; 
+  font-size: 15px; 
+  letter-spacing: .2px; 
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.brand-text small { 
+  color: #6ee7b7; 
+  font-size: 11px; 
+  letter-spacing: .4px; 
+  display: block;
+  text-align: center;
+}
+/* ============================================================ */
+
+>>>>>>> 4cd1d3b (Update project)
 .nav{
   flex:1;
   padding:16px 12px;

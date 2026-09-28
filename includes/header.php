@@ -29,9 +29,7 @@ $menu = [
     <!-- BRAND / LOGO (SUDAH DIPERBAIKI)              -->
     <!-- ============================================ -->
     <div class="brand">
-      <div class="brand-mark">
         <img src="assets/logo.png" alt="Logo" class="brand-logo">
-      </div>
       <div class="brand-text">
         <strong>Asfie Fakhri</strong>
       <marquee behavior="scroll" direction="left" scrollamount="3">
