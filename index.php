@@ -82,8 +82,8 @@ require_once 'includes/header.php';
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Komposisi Penjualan per Hari</h2></div>
-    <div class="card-body">
+        <div class="card-head"><h2>Komposisi Penjualan per Hari</h2></div>
+  <div class="card-body">
       <canvas id="chartSimpanan" height="120"></canvas>
     </div>
   </div>

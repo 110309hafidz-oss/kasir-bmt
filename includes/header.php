@@ -33,7 +33,7 @@ $menu = [
         <img src="assets/logo.png" alt="Logo" class="brand-logo">
       </div>
       <div class="brand-text">
-        <strong>Asfie Mart</strong>
+        <strong>Asfie Fakhri</strong>
       <marquee behavior="scroll" direction="left" scrollamount="3">
         <small>Baitul Maal wat Tamwil</small>
       </marquee>
