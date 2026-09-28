@@ -34,7 +34,9 @@ $menu = [
       </div>
       <div class="brand-text">
         <strong>Asfie Mart</strong>
+      <marquee behavior="scroll" direction="left" scrollamount="3">
         <small>Baitul Maal wat Tamwil</small>
+      </marquee>
       </div>
     </div>
 
