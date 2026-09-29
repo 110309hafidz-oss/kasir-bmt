@@ -20,7 +20,7 @@ $menu = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= isset($pageTitle) ? e($pageTitle) . ' · ' : '' ?>Asfie Mart</title>
+<title><?= isset($pageTitle) ? e($pageTitle) . ' · ' : '' ?>Fakhri</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -33,10 +33,10 @@ $menu = [
     <div class="brand">
       <img src="assets/logo.png" alt="Logo Asfie Mart" class="brand-logo">
       <div class="brand-text">
-        <strong>Asfie Mart</strong>
-        <marquee behavior="scroll" direction="left" scrollamount="3">
-          <small>Baitul Maal wat Tamwil</small>
-        </marquee>
+        <strong>Asfie mart</strong>
+      <marquee behavior="scroll" direction="left" scrollamount="3">
+        <small>Baitul Maal wat Tamwil</small>
+      </marquee>
       </div>
     </div>
 
