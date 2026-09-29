@@ -123,18 +123,21 @@ button {
   min-height: 100vh;
 }
 
-/* --- Sidebar --- */
+/* ------------------------------------------------------------
+   SIDEBAR — RAPI, LOGO BESAR, ADMIN DI BAWAH
+   ------------------------------------------------------------ */
 .sidebar {
-  width: 248px;
+  width: 260px;
   position: fixed;
   inset: 0 auto 0 0;
   background: linear-gradient(180deg, var(--g800) 0%, var(--g900) 100%);
   color: var(--g100);
   display: flex;
   flex-direction: column;
-  padding: 0 0 20px;
+  padding: 0;
   z-index: 60;
   box-shadow: 2px 0 12px rgba(5, 46, 33, .15);
+  overflow: hidden;
 }
 
 /* Ornamen lingkaran di sidebar */
@@ -162,57 +165,58 @@ button {
 }
 
 /* ------------------------------------------------------------
-   BRAND / LOGO SIDEBAR — RAPI & COMPACT
+   BRAND / LOGO SIDEBAR
    ------------------------------------------------------------ */
 .brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 18px 16px 16px;
+  gap: 8px;
+  padding: 24px 16px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, .09);
   position: relative;
   z-index: 1;
   text-align: center;
   width: 100%;
+  flex: none;
 }
 
 .brand-logo {
   display: block;
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   object-fit: contain;
   object-position: center;
-  margin: 0 auto 4px;
+  margin: 0 auto 6px;
   background: none;
   border: none;
   border-radius: 0;
   box-shadow: none;
   padding: 0;
-  filter: drop-shadow(0 4px 10px rgba(16, 185, 129, .25));
+  filter: drop-shadow(0 6px 14px rgba(16, 185, 129, .35));
 }
 
 .brand-text {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  line-height: 1.2;
+  gap: 3px;
+  line-height: 1.25;
   width: 100%;
 }
 
 .brand-text strong {
   color: #ffffff;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: .4px;
+  letter-spacing: .5px;
   text-align: center;
 }
 
 .brand-text small {
   color: #6ee7b7;
   font-size: 10px;
-  letter-spacing: .5px;
+  letter-spacing: .6px;
   text-transform: uppercase;
   text-align: center;
   opacity: .85;
@@ -221,20 +225,20 @@ button {
 .brand-text marquee {
   width: 100%;
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 10px;
   color: #a7f3d0;
 }
 
 /* ------------------------------------------------------------
-   NAVIGASI SIDEBAR — RAPI & KONSISTEN
+   NAVIGASI SIDEBAR
    ------------------------------------------------------------ */
 .nav {
-  flex: 1;
+  flex: 0 0 auto;
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   overflow-y: auto;
   position: relative;
   z-index: 1;
@@ -260,6 +264,7 @@ button {
   font-weight: 500;
   font-size: 13.5px;
   line-height: 1.2;
+  min-height: 40px;
   transition: var(--transition);
   position: relative;
   border-left: 3px solid transparent;
@@ -300,9 +305,12 @@ button {
   border-radius: 99px;
 }
 
-/* --- Sidebar Footer (User Chip + Logout) --- */
+/* ------------------------------------------------------------
+   SIDEBAR FOOTER — ADMIN DORONG KE BAWAH
+   ------------------------------------------------------------ */
 .sidebar-foot {
-  padding: 14px 16px 0;
+  margin-top: auto;              /* kunci: dorong ke dasar sidebar */
+  padding: 16px 14px 18px;
   border-top: 1px solid rgba(255, 255, 255, .09);
   position: relative;
   z-index: 1;
@@ -325,17 +333,19 @@ button {
   background: var(--gold);
   color: #3b2f00;
   font-weight: 700;
+  font-size: 14px;
   box-shadow: 0 0 0 3px rgba(212, 175, 55, .25);
 }
 
 .user-chip strong {
   display: block;
   color: #fff;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.3;
 }
 .user-chip small {
   color: #6ee7b7;
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 .btn-logout {
@@ -353,9 +363,11 @@ button {
   color: #fff;
 }
 
-/* --- Main & Topbar --- */
+/* ------------------------------------------------------------
+   MAIN & TOPBAR
+   ------------------------------------------------------------ */
 .main {
-  margin-left: 248px;
+  margin-left: 260px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -556,7 +568,6 @@ button {
   opacity: .10;
 }
 
-/* Warna khusus per stat */
 .stat:nth-child(1)::before { background: linear-gradient(180deg, var(--g500), var(--g700)); }
 .stat:nth-child(1)::after { background: linear-gradient(135deg, var(--g500), var(--g700)); }
 
