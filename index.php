@@ -45,6 +45,27 @@ for ($i = 6; $i >= 0; $i--) {
 
 /* ====== QUERY: Total nilai stok produk (pengganti simpanan) ====== */
 $totalNilaiStok = (float)$pdo->query("SELECT COALESCE(SUM(harga_jual * stok),0) FROM produk")->fetchColumn();
+/* ====== QUERY: Pengeluaran 30 hari terakhir per kategori ====== */
+$pengeluaranKategori = $pdo->query("
+    SELECT kategori, SUM(nominal) AS total
+    FROM pengeluaran
+    WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+    GROUP BY kategori
+    ORDER BY total DESC
+")->fetchAll();
+
+$outLabels = [];
+$outData   = [];
+foreach ($pengeluaranKategori as $p) {
+    $outLabels[] = $p['kategori'];
+    $outData[]   = (float)$p['total'];
+}
+
+/* ====== QUERY: Total pengeluaran hari ini ====== */
+$outHariIni = (float)$pdo->query("
+    SELECT COALESCE(SUM(nominal),0) FROM pengeluaran
+    WHERE DATE(tanggal) = CURDATE()
+")->fetchColumn();
 
 require_once 'includes/header.php';
 ?>
@@ -82,11 +103,11 @@ require_once 'includes/header.php';
   </div>
 
   <div class="card">
-        <div class="card-head"><h2>Komposisi Penjualan per Hari</h2></div>
-  <div class="card-body">
-      <canvas id="chartSimpanan" height="120"></canvas>
-    </div>
-  </div>
+  <div class="card-head"><h2>Komposisi Pengeluaran (30 Hari Terakhir)</h2></div>
+  <div class="card-body" style="height:340px">
+  <canvas id="chartSimpanan"></canvas>
+</div>
+</div>
 </div>
 <!-- =============== END GRAFIK =============== -->
 
@@ -143,7 +164,9 @@ require_once 'includes/header.php';
 <script>
   const rupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
 
-  // Line Chart Penjualan
+  // =====================================================
+  // 1. LINE CHART — Tren Penjualan 7 Hari
+  // =====================================================
   const ctxPenjualan = document.getElementById('chartPenjualan');
   if (ctxPenjualan) {
     new Chart(ctxPenjualan, {
@@ -175,36 +198,99 @@ require_once 'includes/header.php';
     });
   }
 
-  // Bar Chart Penjualan per Hari (pengganti doughnut simpanan)
-  const ctxBar = document.getElementById('chartSimpanan');
-  if (ctxBar) {
-    new Chart(ctxBar, {
-      type: 'bar',
+  // =====================================================
+  // 2. PLUGIN — Tampilkan Persen di Dalam Slice
+  //    (HARUS di atas sebelum dipakai!)
+  // =====================================================
+  const persenPlugin = {
+    id: 'persenPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || !meta.data.length) return;
+
+      const data  = chart.data.datasets[0].data;
+      const total = data.reduce((a, b) => a + b, 0);
+      if (total <= 0) return;
+
+      meta.data.forEach((arc, i) => {
+        const persen = (data[i] / total) * 100;
+        if (persen < 5) return;
+
+        const pos = arc.tooltipPosition();
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px Segoe UI, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,.4)';
+        ctx.shadowBlur = 3;
+        ctx.fillText(persen.toFixed(0) + '%', pos.x, pos.y);
+        ctx.restore();
+      });
+    }
+  };
+
+  // =====================================================
+  // 3. PIE CHART — Komposisi Pengeluaran per Kategori
+  // =====================================================
+  const ctxPie = document.getElementById('chartSimpanan');
+  if (ctxPie) {
+    let pieLabels = <?= json_encode($outLabels ?? []) ?>;
+    let pieData   = <?= json_encode($outData   ?? []) ?>;
+
+    // Kalau tidak ada data
+    if (pieData.length === 0) {
+      pieLabels = ['Belum ada pengeluaran'];
+      pieData   = [1];
+    }
+
+    const pieColors = [
+      '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6',
+      '#ec4899', '#ef4444', '#14b8a6', '#f97316'
+    ];
+
+    new Chart(ctxPie, {
+      type: 'pie',
+      plugins: [persenPlugin],
       data: {
-        labels: <?= json_encode($chartLabels) ?>,
+        labels: pieLabels,
         datasets: [{
-          label: 'Penjualan',
-          data: <?= json_encode($chartData) ?>,
-          backgroundColor: [
-            'rgba(16,185,129,.85)',
-            'rgba(5,150,105,.85)',
-            'rgba(4,120,87,.85)',
-            'rgba(52,211,153,.85)',
-            'rgba(16,185,129,.85)',
-            'rgba(5,150,105,.85)',
-            'rgba(4,120,87,.85)'
-          ],
-          borderRadius: 6
+          data: pieData,
+          backgroundColor: (pieData.length === 1 && pieLabels[0] === 'Belum ada pengeluaran')
+                           ? ['#e2e8f0']
+                           : pieColors,
+          borderColor: '#ffffff',
+          borderWidth: 3,
+          hoverOffset: 8
         }]
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => rupiah(ctx.parsed.y) } }
-        },
-        scales: {
-          y: { beginAtZero: true, ticks: { callback: (v) => rupiah(v) } }
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 14,
+              font: { size: 12, weight: '600' },
+              color: '#334155',
+              usePointStyle: true,
+              pointStyle: 'circle'
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                if (ctx.label === 'Belum ada pengeluaran') {
+                  return ' Belum ada pengeluaran tercatat';
+                }
+                const total  = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const persen = ((ctx.parsed / total) * 100).toFixed(1);
+                return ' ' + ctx.label + ': ' + rupiah(ctx.parsed) + ' (' + persen + '%)';
+              }
+            }
+          }
         }
       }
     });

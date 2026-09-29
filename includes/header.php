@@ -9,8 +9,10 @@ $menu = [
     ['index.php',      'Dashboard',  'M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10'],
     ['kasir.php',      'Kasir',      'M3 3h2l2 12h12l2-9H6M9 21a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z'],
     ['transaksi.php',  'Transaksi',  'M4 4h16v4H4zM4 12h16v8H4z'],
+    ['pengeluaran.php', 'Pengeluaran', 'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6'],
     ['produk.php',     'Produk',     'M21 16V8l-9-5-9 5v8l9 5 9-5zM3.3 7L12 12l8.7-5M12 22V12'],
     ['laporan.php',    'Laporan',    'M4 4h16v16H4zM8 12h8M8 8h8M8 16h5'],
+
 ];
 ?>
 <!DOCTYPE html>
@@ -18,23 +20,23 @@ $menu = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= isset($pageTitle) ? e($pageTitle) . ' · ' : '' ?>Fakhri</title>
+<title><?= isset($pageTitle) ? e($pageTitle) . ' · ' : '' ?>Asfie Mart</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 <div class="app">
   <aside class="sidebar">
-    
+
     <!-- ============================================ -->
-    <!-- BRAND / LOGO (SUDAH DIPERBAIKI)              -->
+    <!-- BRAND / LOGO                                 -->
     <!-- ============================================ -->
     <div class="brand">
-        <img src="assets/logo.png" alt="Logo" class="brand-logo">
+      <img src="assets/logo.png" alt="Logo Asfie Mart" class="brand-logo">
       <div class="brand-text">
-        <strong>Asfie mart</strong>
-      <marquee behavior="scroll" direction="left" scrollamount="3">
-        <small>Baitul Maal wat Tamwil</small>
-      </marquee>
+        <strong>Asfie Mart</strong>
+        <marquee behavior="scroll" direction="left" scrollamount="3">
+          <small>Baitul Maal wat Tamwil</small>
+        </marquee>
       </div>
     </div>
 

@@ -1,5 +1,5 @@
 /* ============================================================
-   KASIR BMT — Stylesheet (Tema Hijau — Ramai & Hidup)
+   ASFIE MART — Stylesheet (Tema Hijau)
    ============================================================ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -58,7 +58,6 @@ html { -webkit-text-size-adjust: 100%; }
 body{
   font-family:'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   background-color:var(--bg);
-  /* Pola titik halus agar tidak flat */
   background-image:
     radial-gradient(circle at 20% 10%, rgba(16,185,129,.06) 0%, transparent 40%),
     radial-gradient(circle at 85% 80%, rgba(212,175,55,.05) 0%, transparent 40%),
@@ -95,11 +94,11 @@ button { font-family:inherit; }
   color:var(--g100);
   display:flex;
   flex-direction:column;
-  padding:20px 0;
+  padding:0 0 20px;            /* ← atas 0, konten naik ke atas */
   z-index:60;
   box-shadow:2px 0 12px rgba(5,46,33,.15);
 }
-/* Ornamen lingkaran di sidebar agar ramai */
+/* Ornamen lingkaran di sidebar */
 .sidebar::before{
   content:'';
   position:absolute;
@@ -119,73 +118,82 @@ button { font-family:inherit; }
   pointer-events:none;
 }
 
-<<<<<<< HEAD
-=======
-/* ============================================================
-   BRAND / LOGO SIDEBAR (UPDATED: Center & Bigger)
-   ============================================================ */
-/* ============================================================
-   BRAND / LOGO SIDEBAR (UPDATED: Bigger & Auto Fit)
-   ============================================================ */
-/* ============================================================
-   BRAND / LOGO SIDEBAR (AUTO ADJUST)
-   ============================================================ */
-/* ============================================================
-   LOGO SIDEBAR — AUTO ADJUST
-   ============================================================ */
 
 /* ============================================================
-   BRAND / LOGO SIDEBAR — DIPERKECIL & DIGESER KE ATAS
+   BRAND / LOGO SIDEBAR — LOGO & TEKS DI TENGAH ATAS
    ============================================================ */
 
 .brand{
     display:flex;
     flex-direction:column;
-    align-items:center;
-    justify-content:flex-start;   /* konten mulai dari atas */
-    gap:8px;                      /* jarak logo ke teks lebih rapat */
-    padding:0 16px 20px;          /* padding atas dikurangi */
-    margin-top:-8px;              /* tarik ke atas sedikit */
+    align-items:center;          /* center horizontal */
+    justify-content:flex-start;  /* mulai dari atas */
+    gap:2px;                     /* logo & teks rapat */
+    padding:12px 16px 14px;      /* atas kecil */
+    margin:0;
     border-bottom:1px solid rgba(255,255,255,.09);
     position:relative;
     z-index:1;
     text-align:center;
+    width:100%;
 }
 
-/* Logo diperkecil dan tanpa frame */
+/* Logo — center, ukuran fix */
 .brand-logo{
-    width:110px;                  /* sebelumnya 100% — sekarang fix kecil */
-    height:auto;
-    max-height:110px;
+    display:block;
+    margin:0 auto;
+    width:150px; 
+    height:150px;
     object-fit:contain;
     object-position:center;
-    display:block;
-    background:none;              /* hilangkan background putih */
-    border:none;                  /* hilangkan border */
-    border-radius:0;              /* hilangkan bulat */
-    box-shadow:none;              /* hilangkan bayangan */
+    background:none;
+    border:none;
+    border-radius:0;
+    box-shadow:none;
     padding:0;
 }
 
-.brand-text strong { 
-  display: block; 
-  color: #fff; 
-  font-size: 15px; 
-  letter-spacing: .2px; 
-  margin-bottom: 2px;
-  text-align: center;
+/* Teks brand */
+.brand-text{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0;
+    line-height:1.15;
+    margin:0;
+    width:100%;
 }
 
-.brand-text small { 
-  color: #6ee7b7; 
-  font-size: 11px; 
-  letter-spacing: .4px; 
-  display: block;
-  text-align: center;
+.brand-text strong{
+    color:#ffffff;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.3px;
+    text-align:center;
+    margin:0;
+    display:block;
 }
-/* ============================================================ */
 
->>>>>>> 4cd1d3b (Update project)
+.brand-text small{
+    color:#6ee7b7;
+    font-size:10.5px;
+    letter-spacing:.4px;
+    text-align:center;
+    display:block;
+    margin:0;
+}
+
+/* Marquee (Baitul Maal wat Tamwil) */
+.brand-text marquee{
+    width:100%;
+    display:block;
+    margin-top:1px;
+}
+
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
 .nav{
   flex:1;
   padding:16px 12px;
@@ -226,6 +234,10 @@ button { font-family:inherit; }
 }
 .nav-item svg { width:19px; height:19px; }
 
+
+/* ============================================================
+   SIDEBAR FOOTER (User Chip + Logout)
+   ============================================================ */
 .sidebar-foot{
   padding:14px 16px 0;
   border-top:1px solid rgba(255,255,255,.09);
@@ -262,6 +274,10 @@ button { font-family:inherit; }
 }
 .btn-logout:hover { background:var(--danger); color:#fff; }
 
+
+/* ============================================================
+   MAIN + TOPBAR
+   ============================================================ */
 .main{
   margin-left:248px;
   flex:1;
@@ -296,7 +312,6 @@ button { font-family:inherit; }
   border:1px solid var(--g100);
   position:relative;
 }
-/* Dot pulse di badge date */
 .badge-date::before{
   content:'';
   position:absolute;
@@ -376,7 +391,7 @@ button { font-family:inherit; }
 
 
 /* ============================================================
-   STATS — lebih hidup, warna berbeda per kartu
+   STATS
    ============================================================ */
 .stats{
   display:grid;
@@ -405,7 +420,6 @@ button { font-family:inherit; }
   box-shadow:var(--shadow-glow);
   border-color:var(--g400);
 }
-/* Garis aksen kiri */
 .stat::before{
   content:'';
   position:absolute;
@@ -413,7 +427,6 @@ button { font-family:inherit; }
   width:5px;
   background:linear-gradient(180deg, var(--g500), var(--g700));
 }
-/* Lingkaran dekoratif */
 .stat::after{
   content:'';
   position:absolute;
@@ -423,17 +436,12 @@ button { font-family:inherit; }
   background:linear-gradient(135deg, var(--g500), var(--g700));
   opacity:.10;
 }
-
-/* Varian warna per kartu */
 .stat:nth-child(1)::before{ background:linear-gradient(180deg, var(--g500), var(--g700)); }
 .stat:nth-child(1)::after { background:linear-gradient(135deg, var(--g500), var(--g700)); }
-
 .stat:nth-child(2)::before{ background:linear-gradient(180deg, var(--gold), var(--gold-dark)); }
 .stat:nth-child(2)::after { background:linear-gradient(135deg, var(--gold), var(--gold-dark)); }
-
 .stat:nth-child(3)::before{ background:linear-gradient(180deg, var(--info), #1d4ed8); }
 .stat:nth-child(3)::after { background:linear-gradient(135deg, var(--info), #1d4ed8); }
-
 .stat:nth-child(4)::before{ background:linear-gradient(180deg, var(--purple), #6d28d9); }
 .stat:nth-child(4)::after { background:linear-gradient(135deg, var(--purple), #6d28d9); }
 
