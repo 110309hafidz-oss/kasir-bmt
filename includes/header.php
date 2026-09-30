@@ -25,7 +25,7 @@ $menu = [
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
 
     <!-- ============================================ -->
     <!-- BRAND / LOGO                                 -->
@@ -65,7 +65,12 @@ $menu = [
 
   <main class="main">
     <header class="topbar">
-      <div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+      <div class="topbar-info">
         <h1><?= isset($pageTitle) ? e($pageTitle) : 'Dashboard' ?></h1>
         <p class="subtitle"><?= isset($pageSubtitle) ? e($pageSubtitle) : 'Sistem Informasi Kasir BMT' ?></p>
       </div>
@@ -82,3 +87,41 @@ $menu = [
     <?php endif; ?>
 
     <div class="content">
+
+    <!-- Overlay untuk menutup sidebar saat klik di luar (mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<script>
+(function () {
+  const toggle  = document.getElementById('sidebarToggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (!toggle || !sidebar || !overlay) return;
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  function toggleSidebar() {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  }
+
+  toggle.addEventListener('click', toggleSidebar);
+  overlay.addEventListener('click', closeSidebar);
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) closeSidebar();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSidebar();
+  });
+})();
+</script>
+    </body>
