@@ -31,12 +31,12 @@ $menu = [
     <!-- BRAND / LOGO                                 -->
     <!-- ============================================ -->
     <div class="brand">
-      <img src="assets/loge.png" alt="Logo Asfie Mart" class="brand-logo">
+      <div class="brand-logo-wrap">
+        <img src="assets/loge.png" alt="Logo Asfie Mart" class="brand-logo">
+      </div>
       <div class="brand-text">
         <strong>Asvie Mart</strong>
-      <marquee behavior="scroll" direction="left" scrollamount="3">
-        <small>Baitul Maal wat Tamwil</small>
-      </marquee>
+        <span class="brand-sub">Baitul Maal wat Tamwil</span>
       </div>
     </div>
 
