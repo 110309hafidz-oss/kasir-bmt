@@ -161,8 +161,15 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $list = $stmt->fetchAll();
 
-// Ambil daftar kategori unik
-$kategoris = $pdo->query("SELECT DISTINCT kategori FROM produk WHERE kategori IS NOT NULL AND kategori != '' ORDER BY kategori")->fetchAll(PDO::FETCH_COLUMN);
+// Ambil daftar kategori unik dari database
+$kategorisDB = $pdo->query("SELECT DISTINCT kategori FROM produk WHERE kategori IS NOT NULL AND kategori != '' ORDER BY kategori")->fetchAll(PDO::FETCH_COLUMN);
+
+// Kategori bawaan (selalu tampil di filter)
+$kategoriBawaan = ['Minuman', 'Makanan', 'ATK'];
+
+// Gabungkan & hilangkan duplikat (case-insensitive)
+$kategoris = array_values(array_unique(array_merge($kategoriBawaan, $kategorisDB)));
+sort($kategoris);
 
 $pageTitle = 'Data Produk';
 $pageSubtitle = 'Manajemen barang / produk BMT';
@@ -197,7 +204,7 @@ require_once 'includes/header.php';
           <label>Kategori</label>
           <input type="text" name="kategori" list="listKategori"
                  value="<?= e($edit['kategori'] ?? '') ?>"
-                 placeholder="Sembako / ATK / dll">
+                 placeholder="Minuman / Makanan / ATK">
           <datalist id="listKategori">
             <?php foreach ($kategoris as $k): ?>
               <option value="<?= e($k) ?>">
@@ -296,6 +303,22 @@ require_once 'includes/header.php';
         <button class="btn btn-outline btn-sm">Filter</button>
       </form>
     </div>
+
+    <!-- ===== QUICK FILTER KATEGORI ===== -->
+    <div style="padding: 10px 16px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #e5e7eb;">
+      <a href="produk.php" 
+         class="btn btn-sm <?= $kategori_filter === '' ? 'btn-primary' : 'btn-outline' ?>">
+        Semua
+      </a>
+      <?php foreach (['Minuman', 'Makanan', 'ATK'] as $kb): ?>
+        <a href="produk.php?kategori=<?= urlencode($kb) ?><?= $q ? '&q=' . urlencode($q) : '' ?>" 
+           class="btn btn-sm <?= $kategori_filter === $kb ? 'btn-primary' : 'btn-outline' ?>">
+          <?= e($kb) ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <!-- ===== END QUICK FILTER ===== -->
+
     <div class="table-wrap" style="max-height:640px;overflow-y:auto">
       <table>
         <thead>

@@ -83,12 +83,27 @@ require_once 'includes/header.php';
         <h2>Daftar Produk</h2>
         <input type="text" id="searchProduk" placeholder="Cari produk..." style="max-width:230px">
       </div>
+
+      <!-- ===== QUICK FILTER KATEGORI ===== -->
+      <div style="padding: 10px 16px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #e5e7eb;">
+        <button type="button" class="btn btn-sm btn-primary filter-kategori" data-kategori="">
+          Semua
+        </button>
+        <?php foreach (['Minuman', 'Makanan', 'ATK'] as $kb): ?>
+          <button type="button" class="btn btn-sm btn-outline filter-kategori" data-kategori="<?= e($kb) ?>">
+            <?= e($kb) ?>
+          </button>
+        <?php endforeach; ?>
+      </div>
+      <!-- ===== END QUICK FILTER ===== -->
+
       <div class="card-body">
         <div class="produk-grid" id="produkGrid">
           <?php foreach ($produk as $p): ?>
             <div class="produk-item <?= $p['stok'] <= 0 ? 'out' : '' ?>"
                  data-id="<?= (int)$p['id'] ?>"
                  data-nama="<?= e($p['nama']) ?>"
+                 data-kategori="<?= e($p['kategori'] ?? '') ?>"
                  data-harga="<?= (float)$p['harga_jual'] ?>"
                  data-stok="<?= (int)$p['stok'] ?>">
               <div class="produk-img">
@@ -161,6 +176,11 @@ const cartCount = document.getElementById('cartCount');
 
 const rp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
 
+/* ===== STATE FILTER ===== */
+let filterKategori = '';   // kosong = semua
+let filterCari     = '';
+
+/* ===== KLIK PRODUK → TAMBAH KE CART ===== */
 grid.addEventListener('click', e => {
   const el = e.target.closest('.produk-item');
   if (!el) return;
@@ -173,6 +193,7 @@ grid.addEventListener('click', e => {
   render();
 });
 
+/* ===== KONTROL QTY DI CART ===== */
 cartList.addEventListener('click', e => {
   const id = e.target.dataset.id;
   if (!id) return;
@@ -187,6 +208,7 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Kosongkan keranjang?')) { for (const k in cart) delete cart[k]; render(); }
 });
 
+/* ===== RENDER CART ===== */
 function render() {
   const items = Object.values(cart);
   if (!items.length) {
@@ -222,13 +244,40 @@ function hitungKembalian() {
   kembaliTx.style.color = kembali < 0 ? '#dc2626' : '';
 }
 
-document.getElementById('searchProduk').addEventListener('input', function () {
-  const q = this.value.toLowerCase();
+/* ===== FILTER: CARI + KATEGORI ===== */
+function applyFilter() {
+  const q = filterCari.toLowerCase();
   grid.querySelectorAll('.produk-item').forEach(el => {
-    el.style.display = el.dataset.nama.toLowerCase().includes(q) ? '' : 'none';
+    const cocokNama = el.dataset.nama.toLowerCase().includes(q);
+    const cocokKat  = filterKategori === '' || el.dataset.kategori === filterKategori;
+    el.style.display = (cocokNama && cocokKat) ? '' : 'none';
+  });
+}
+
+document.getElementById('searchProduk').addEventListener('input', function () {
+  filterCari = this.value;
+  applyFilter();
+});
+
+/* ===== QUICK FILTER KATEGORI ===== */
+document.querySelectorAll('.filter-kategori').forEach(btn => {
+  btn.addEventListener('click', function () {
+    // Update state
+    filterKategori = this.dataset.kategori;
+
+    // Update tampilan tombol aktif
+    document.querySelectorAll('.filter-kategori').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    });
+    this.classList.remove('btn-outline');
+    this.classList.add('btn-primary');
+
+    applyFilter();
   });
 });
 
+/* ===== SUBMIT FORM ===== */
 document.getElementById('formKasir').addEventListener('submit', e => {
   if (!Object.keys(cart).length) { e.preventDefault(); alert('Keranjang masih kosong.'); }
 });
