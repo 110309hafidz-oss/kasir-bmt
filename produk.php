@@ -159,18 +159,11 @@ if (!empty($_GET['edit'])) {
 /* ============================================================
    DATA LIST PRODUK
    ============================================================ */
-$q = trim($_GET['q'] ?? '');
 $kategori_filter = trim($_GET['kategori'] ?? '');
 
 $sql = "SELECT * FROM produk WHERE 1=1";
 $params = [];
 
-if ($q !== '') {
-    $sql .= " AND (nama LIKE ? OR kode LIKE ?)";
-    $like = "%$q%";
-    $params[] = $like;
-    $params[] = $like;
-}
 if ($kategori_filter !== '') {
     $sql .= " AND kategori = ?";
     $params[] = $kategori_filter;
@@ -389,18 +382,6 @@ require_once 'includes/header.php';
   <div class="card">
     <div class="card-head">
       <h2>Daftar Produk (<?= count($list) ?>)</h2>
-      <form method="get" class="filter-inline">
-        <input type="text" name="q" value="<?= e($q) ?>" placeholder="Cari produk...">
-        <select name="kategori">
-          <option value="">Semua Kategori</option>
-          <?php foreach ($kategoris as $k): ?>
-            <option value="<?= e($k) ?>" <?= $kategori_filter === $k ? 'selected' : '' ?>>
-              <?= e($k) ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
-        <button class="btn btn-outline btn-sm">Filter</button>
-      </form>
     </div>
 
     <!-- QUICK FILTER KATEGORI -->
@@ -410,7 +391,7 @@ require_once 'includes/header.php';
         Semua
       </a>
       <?php foreach (['Minuman', 'Makanan', 'ATK'] as $kb): ?>
-        <a href="produk.php?kategori=<?= urlencode($kb) ?><?= $q ? '&q=' . urlencode($q) : '' ?>"
+        <a href="produk.php?kategori=<?= urlencode($kb) ?>"
            class="btn btn-sm <?= $kategori_filter === $kb ? 'btn-primary' : 'btn-outline' ?>">
           <?= e($kb) ?>
         </a>
