@@ -36,7 +36,9 @@ $menu = [
       </div>
       <div class="brand-text">
         <strong>Asvie Mart</strong>
-        <span class="brand-sub">Baitul Maal wat Tamwil</span>
+      <marquee>
+                <span class="brand-sub">Baitul Maal wat Tamwil</span>
+      </marquee>
       </div>
     </div>
 
