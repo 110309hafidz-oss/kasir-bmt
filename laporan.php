@@ -203,6 +203,7 @@ require_once 'includes/header.php';
 ?>
 
 <!-- ===== FILTER ===== -->
+<!-- ===== FILTER ===== -->
 <div class="card no-print">
   <div class="card-head"><h2>Filter Periode Laporan</h2></div>
   <div class="card-body">
@@ -216,7 +217,8 @@ require_once 'includes/header.php';
         <input type="date" name="sampai" value="<?= e($sampai) ?>">
       </div>
       <button class="btn btn-primary">🔍 Tampilkan</button>
-      <button type="button" class="btn btn-outline" onclick="window.print()">🖨️ Cetak</button>
+      <a href="export_laporan.php?dari=<?= e($dari) ?>&sampai=<?= e($sampai) ?>"
+         class="btn btn-outline">📥 Download Excel</a>
     </form>
   </div>
 </div>

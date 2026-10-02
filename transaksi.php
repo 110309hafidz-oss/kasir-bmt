@@ -38,10 +38,11 @@ require_once 'includes/header.php';
       </div>
       <button class="btn btn-primary">Tampilkan</button>
       <a href="transaksi.php" class="btn btn-outline">Reset</a>
+      <a href="export_transaksi.php?dari=<?= e($dari) ?>&sampai=<?= e($sampai) ?>"
+         class="btn btn-outline">📥 Download Excel</a>
     </form>
   </div>
 </div>
-
 <div class="card">
   <div class="card-head"><h2>Daftar Transaksi (<?= count($rows) ?>)</h2></div>
   <div class="table-wrap">

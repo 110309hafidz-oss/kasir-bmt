@@ -45,6 +45,7 @@ for ($i = 6; $i >= 0; $i--) {
 
 /* ====== QUERY: Total nilai stok produk (pengganti simpanan) ====== */
 $totalNilaiStok = (float)$pdo->query("SELECT COALESCE(SUM(harga_jual * stok),0) FROM produk")->fetchColumn();
+
 /* ====== QUERY: Pengeluaran 30 hari terakhir per kategori ====== */
 $pengeluaranKategori = $pdo->query("
     SELECT kategori, SUM(nominal) AS total
@@ -89,109 +90,8 @@ $labaRugi = $pendapatan - $beban;
 $isLaba   = $labaRugi >= 0;
 
 // ============================================
-// HUTANG
+// HUTANG (READ-ONLY di dashboard)
 // ============================================
-
-// Handle TAMBAH hutang (stok langsung berkurang)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'tambah_hutang') {
-    $nama       = trim($_POST['nama'] ?? '');
-    $produkId   = (int)($_POST['produk_id'] ?? 0);
-    $qty        = max(1, (int)($_POST['qty'] ?? 1));
-    $keterangan = trim($_POST['keterangan'] ?? '');
-
-    if ($nama === '' || $produkId <= 0) {
-        flash('error', 'Nama dan produk wajib diisi.');
-        redirect('index.php');
-    }
-
-    try {
-        $pdo->beginTransaction();
-
-        // Cek stok
-        $stmt = $pdo->prepare("SELECT nama, harga_jual, stok FROM produk WHERE id = ? FOR UPDATE");
-        $stmt->execute([$produkId]);
-        $p = $stmt->fetch();
-
-        if (!$p) throw new Exception('Produk tidak ditemukan.');
-        if ($p['stok'] < $qty) {
-            throw new Exception('Stok "' . $p['nama'] . '" tidak mencukupi (sisa: ' . $p['stok'] . ').');
-        }
-
-        // Simpan hutang
-        $pdo->prepare("
-            INSERT INTO hutang (nama, produk_id, qty, harga, keterangan, tanggal)
-            VALUES (?, ?, ?, ?, ?, CURDATE())
-        ")->execute([$nama, $produkId, $qty, $p['harga_jual'], $keterangan]);
-
-        // Kurangi stok langsung
-        $pdo->prepare("UPDATE produk SET stok = stok - ? WHERE id = ?")
-            ->execute([$qty, $produkId]);
-
-        $pdo->commit();
-        flash('success', 'Hutang "' . $nama . '" dicatat. Stok ' . $p['nama'] . ' berkurang ' . $qty . '.');
-    } catch (Exception $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        flash('error', $e->getMessage());
-    }
-    redirect('index.php');
-}
-
-// Handle BAYAR hutang (otomatis jadi transaksi penjualan)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['act'] ?? '') === 'bayar_hutang') {
-    $id = (int)($_POST['id'] ?? 0);
-
-    if ($id > 0) {
-        try {
-            $pdo->beginTransaction();
-
-            $stmt = $pdo->prepare("
-                SELECT h.*, p.nama AS nama_produk
-                FROM hutang h
-                JOIN produk p ON p.id = h.produk_id
-                WHERE h.id = ?
-            ");
-            $stmt->execute([$id]);
-            $h = $stmt->fetch();
-
-            if (!$h) throw new Exception('Hutang tidak ditemukan.');
-
-            $total = (float)$h['harga'] * (int)$h['qty'];
-            $kode  = generateKode('TRX', $pdo, 'transaksi', 'kode');
-
-            // Insert transaksi (jenis=penjualan)
-            $pdo->prepare("
-                INSERT INTO transaksi (kode, user_id, jenis, total, bayar, kembalian, keterangan, tanggal)
-                VALUES (?, ?, 'penjualan', ?, ?, 0, ?, NOW())
-            ")->execute([
-                $kode,
-                user()['id'],
-                $total,
-                $total,
-                'Pelunasan hutang dari ' . $h['nama'] . ($h['keterangan'] ? ' (' . $h['keterangan'] . ')' : '')
-            ]);
-
-            $trxId = (int)$pdo->lastInsertId();
-
-            // Insert detail transaksi
-            $pdo->prepare("
-                INSERT INTO transaksi_detail (transaksi_id, produk_id, qty, harga, subtotal)
-                VALUES (?, ?, ?, ?, ?)
-            ")->execute([$trxId, $h['produk_id'], $h['qty'], $h['harga'], $total]);
-
-            // Hapus dari daftar hutang
-            $pdo->prepare("DELETE FROM hutang WHERE id = ?")->execute([$id]);
-
-            $pdo->commit();
-            flash('success', 'Hutang ' . $h['nama'] . ' lunas. Transaksi ' . $kode . ' otomatis tercatat.');
-        } catch (Exception $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            flash('error', 'Gagal: ' . $e->getMessage());
-        }
-    }
-    redirect('index.php');
-}
-
-// Ambil daftar hutang aktif + total
 $hutangAktif = $pdo->query("
     SELECT h.*, p.nama AS nama_produk, p.satuan
     FROM hutang h
@@ -203,9 +103,6 @@ $totalHutang = 0;
 foreach ($hutangAktif as $h) {
     $totalHutang += (float)$h['harga'] * (int)$h['qty'];
 }
-
-// Ambil daftar produk untuk dropdown (hanya yang stok > 0)
-$produkHutang = $pdo->query("SELECT id, nama, harga_jual, stok, satuan FROM produk WHERE stok > 0 ORDER BY nama")->fetchAll();
 
 require_once 'includes/header.php';
 ?>
@@ -243,11 +140,11 @@ require_once 'includes/header.php';
   </div>
 
   <div class="card">
-  <div class="card-head"><h2>Komposisi Pengeluaran (30 Hari Terakhir)</h2></div>
-  <div class="card-body" style="height:340px">
-  <canvas id="chartSimpanan"></canvas>
-</div>
-</div>
+    <div class="card-head"><h2>Komposisi Pengeluaran (30 Hari Terakhir)</h2></div>
+    <div class="card-body" style="height:340px">
+      <canvas id="chartSimpanan"></canvas>
+    </div>
+  </div>
 </div>
 <!-- =============== END GRAFIK =============== -->
 
@@ -264,15 +161,11 @@ require_once 'includes/header.php';
       <tbody>
         <tr>
           <td>Pendapatan Penjualan</td>
-          <td class="text-right text-green strong">
-            <?= rupiah($pendapatan) ?>
-          </td>
+          <td class="text-right text-green strong"><?= rupiah($pendapatan) ?></td>
         </tr>
         <tr>
           <td>Beban Operasional</td>
-          <td class="text-right text-danger strong">
-            − <?= rupiah($beban) ?>
-          </td>
+          <td class="text-right text-danger strong">− <?= rupiah($beban) ?></td>
         </tr>
         <tr style="border-top:2px solid var(--border); background:var(--g25);">
           <td><strong>Laba / Rugi Bersih</strong></td>
@@ -286,95 +179,49 @@ require_once 'includes/header.php';
   </div>
 </div>
 
-<!-- ===== CARD HUTANG ===== -->
+<!-- ===== CARD HUTANG (READ-ONLY) ===== -->
 <div class="card">
   <div class="card-head">
-    <h2>📝 Catatan Hutang</h2>
+    <h2>📝 Daftar Hutang</h2>
     <span class="tag tag-red">Total: <?= rupiah($totalHutang) ?></span>
   </div>
   <div class="card-body">
+    <p class="text-muted" style="margin-bottom:14px; font-size:13px;">
+      ℹ️ Hutang baru dicatat melalui halaman <a href="kasir.php"><strong>Kasir</strong></a> saat uang bayar kurang.
+    </p>
 
-    <!-- Form tambah hutang -->
-    <form method="post" style="margin-bottom:18px">
-      <input type="hidden" name="act" value="tambah_hutang">
-      <div class="form-grid" style="grid-template-columns:1.5fr 2fr 0.7fr 1.5fr auto;align-items:end;gap:10px">
-
-        <div class="form-group">
-          <label>Nama Orang <span class="req">*</span></label>
-          <input type="text" name="nama" placeholder="Contoh: Budi" required>
-        </div>
-
-        <div class="form-group">
-          <label>Produk <span class="req">*</span></label>
-          <select name="produk_id" required>
-            <option value="">-- Pilih Produk --</option>
-            <?php foreach ($produkHutang as $p): ?>
-              <option value="<?= (int)$p['id'] ?>">
-                <?= e($p['nama']) ?> — <?= rupiah($p['harga_jual']) ?>
-                (stok: <?= (int)$p['stok'] ?> <?= e($p['satuan']) ?>)
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Qty <span class="req">*</span></label>
-          <input type="number" name="qty" min="1" value="1" required>
-        </div>
-
-        <div class="form-group">
-          <label>Keterangan</label>
-          <input type="text" name="keterangan" placeholder="Opsional...">
-        </div>
-
-        <div class="form-group">
-          <button class="btn btn-primary" type="submit" style="height:42px">+ Catat</button>
-        </div>
-
-      </div>
-    </form>
-
-    <!-- Daftar hutang aktif -->
     <?php if (!$hutangAktif): ?>
       <div class="empty" style="padding:24px 0">Tidak ada hutang aktif. 🎉</div>
     <?php else: ?>
-      <table>
-        <thead>
-          <tr>
-            <th>Nama</th>
-            <th>Produk</th>
-            <th class="text-center">Qty</th>
-            <th class="text-right">Total</th>
-            <th>Keterangan</th>
-            <th>Tanggal</th>
-            <th class="text-center">Aksi</th>
-          </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($hutangAktif as $h):
-          $total = (float)$h['harga'] * (int)$h['qty'];
-        ?>
-          <tr>
-            <td class="strong"><?= e($h['nama']) ?></td>
-            <td><?= e($h['nama_produk']) ?></td>
-            <td class="text-center"><?= (int)$h['qty'] ?> <?= e($h['satuan']) ?></td>
-            <td class="text-right strong text-danger"><?= rupiah($total) ?></td>
-            <td class="text-muted"><?= e($h['keterangan'] ?: '-') ?></td>
-            <td class="text-muted"><?= date('d/m/Y', strtotime($h['tanggal'])) ?></td>
-            <td class="text-center">
-              <form method="post" style="display:inline"
-                    onsubmit="return confirm('Tandai hutang <?= e($h['nama']) ?> sudah dibayar?\n\nOtomatis akan tercatat sebagai transaksi penjualan.')">
-                <input type="hidden" name="act" value="bayar_hutang">
-                <input type="hidden" name="id" value="<?= (int)$h['id'] ?>">
-                <button class="btn btn-primary btn-sm">✓ Sudah Bayar</button>
-              </form>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Produk</th>
+              <th class="text-center">Qty</th>
+              <th class="text-right">Total</th>
+              <th>Keterangan</th>
+              <th>Tanggal</th>
+            </tr>
+          </thead>
+          <tbody>
+          <?php foreach ($hutangAktif as $h):
+            $total = (float)$h['harga'] * (int)$h['qty'];
+          ?>
+            <tr>
+              <td class="strong"><?= e($h['nama']) ?></td>
+              <td><?= e($h['nama_produk']) ?></td>
+              <td class="text-center"><?= (int)$h['qty'] ?> <?= e($h['satuan']) ?></td>
+              <td class="text-right strong text-danger"><?= rupiah($total) ?></td>
+              <td class="text-muted"><?= e($h['keterangan'] ?: '-') ?></td>
+              <td class="text-muted"><?= date('d/m/Y', strtotime($h['tanggal'])) ?></td>
+            </tr>
+          <?php endforeach; ?>
+          </tbody>
+        </table>
+      </div>
     <?php endif; ?>
-
   </div>
 </div>
 
@@ -467,7 +314,6 @@ require_once 'includes/header.php';
 
   // =====================================================
   // 2. PLUGIN — Tampilkan Persen di Dalam Slice
-  //    (HARUS di atas sebelum dipakai!)
   // =====================================================
   const persenPlugin = {
     id: 'persenPlugin',
@@ -506,7 +352,6 @@ require_once 'includes/header.php';
     let pieLabels = <?= json_encode($outLabels ?? []) ?>;
     let pieData   = <?= json_encode($outData   ?? []) ?>;
 
-    // Kalau tidak ada data
     if (pieData.length === 0) {
       pieLabels = ['Belum ada pengeluaran'];
       pieData   = [1];
@@ -525,8 +370,7 @@ require_once 'includes/header.php';
         datasets: [{
           data: pieData,
           backgroundColor: (pieData.length === 1 && pieLabels[0] === 'Belum ada pengeluaran')
-                           ? ['#e2e8f0']
-                           : pieColors,
+                           ? ['#e2e8f0'] : pieColors,
           borderColor: '#ffffff',
           borderWidth: 3,
           hoverOffset: 8

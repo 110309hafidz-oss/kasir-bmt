@@ -6,9 +6,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cart       = json_decode($_POST['cart'] ?? '[]', true) ?: [];
     $bayar      = (float)($_POST['bayar'] ?? 0);
     $keterangan = trim($_POST['keterangan'] ?? '');
+    $mode       = $_POST['mode'] ?? 'tunai'; // 'tunai' atau 'hutang'
+    $namaHutang = trim($_POST['nama_hutang'] ?? '');
 
     if (!$cart) {
         flash('error', 'Keranjang masih kosong.');
+        redirect('kasir.php');
+    }
+
+    if ($mode === 'hutang' && $namaHutang === '') {
+        flash('error', 'Nama orang untuk hutang wajib diisi.');
         redirect('kasir.php');
     }
 
@@ -35,8 +42,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total += (float)$produkDb[$pid]['harga_jual'] * $qty;
         }
 
-        if ($bayar < $total) throw new Exception('Nominal pembayaran kurang dari total tagihan.');
+        if ($mode === 'tunai' && $bayar < $total) {
+            throw new Exception('Nominal pembayaran kurang dari total tagihan.');
+        }
 
+        if ($mode === 'hutang') {
+            // ==== MODE HUTANG ====
+            // Uang yang dibayar sekarang (bisa 0 = full hutang)
+            $bayarSekarang = max(0, min($bayar, $total));
+            $sisaHutang    = $total - $bayarSekarang;
+
+            if ($sisaHutang <= 0) {
+                throw new Exception('Jika uang cukup, gunakan mode Tunai.');
+            }
+
+            // 1. Catat transaksi penjualan untuk uang yang dibayar sekarang
+            if ($bayarSekarang > 0) {
+                $kode = generateKode('TRX', $pdo, 'transaksi', 'kode');
+                $pdo->prepare("INSERT INTO transaksi (kode, user_id, jenis, total, bayar, kembalian, keterangan)
+                               VALUES (?,?,'penjualan',?,?,0,?)")
+                    ->execute([$kode, user()['id'], $bayarSekarang, $bayarSekarang,
+                               'DP hutang dari ' . $namaHutang]);
+                $trxId = (int)$pdo->lastInsertId();
+
+                // Detail transaksi (proporsional — catat semua item)
+                $insDet = $pdo->prepare("INSERT INTO transaksi_detail (transaksi_id, produk_id, qty, harga, subtotal) VALUES (?,?,?,?,?)");
+                foreach ($cart as $item) {
+                    $pid   = (int)$item['id'];
+                    $qty   = (int)$item['qty'];
+                    $harga = (float)$produkDb[$pid]['harga_jual'];
+                    $insDet->execute([$trxId, $pid, $qty, $harga, $qty * $harga]);
+                }
+            }
+
+            // 2. Kurangi stok & simpan hutang
+            $updStok = $pdo->prepare("UPDATE produk SET stok = stok - ? WHERE id = ?");
+            $insHutang = $pdo->prepare("INSERT INTO hutang (nama, produk_id, qty, harga, keterangan, tanggal) VALUES (?,?,?,?,?,CURDATE())");
+
+            foreach ($cart as $item) {
+                $pid   = (int)$item['id'];
+                $qty   = (int)$item['qty'];
+                $harga = (float)$produkDb[$pid]['harga_jual'];
+
+                $updStok->execute([$qty, $pid]);
+
+                // Hitung porsi hutang per item (proporsional)
+                $subtotalItem = $harga * $qty;
+                $porsiHutang  = $sisaHutang > 0
+                    ? ($subtotalItem / $total) * $sisaHutang
+                    : 0;
+
+                if ($porsiHutang > 0) {
+                    $insHutang->execute([
+                        $namaHutang,
+                        $pid,
+                        $qty,
+                        $porsiHutang / $qty, // harga per unit untuk hutang
+                        $keterangan ?: 'Hutang dari kasir'
+                    ]);
+                }
+            }
+
+            $pdo->commit();
+
+            if ($bayarSekarang > 0) {
+                flash('success', 'Pembayaran sebagian ' . rupiah($bayarSekarang) . ' tercatat. Sisa ' . rupiah($sisaHutang) . ' dicatat sebagai hutang ' . $namaHutang . '.');
+            } else {
+                flash('success', 'Transaksi dicatat sebagai hutang ' . $namaHutang . ' sebesar ' . rupiah($sisaHutang) . '.');
+            }
+
+            redirect('kasir.php');
+        }
+
+        // ==== MODE TUNAI (seperti biasa) ====
         $kode = generateKode('TRX', $pdo, 'transaksi', 'kode');
         $ins  = $pdo->prepare("INSERT INTO transaksi (kode, user_id, jenis, total, bayar, kembalian, keterangan)
                                VALUES (?,?,'penjualan',?,?,?,?)");
@@ -74,6 +152,7 @@ require_once 'includes/header.php';
 
 <form method="post" id="formKasir">
   <input type="hidden" name="cart" id="cartInput">
+  <input type="hidden" name="mode" id="modeInput" value="tunai">
 
   <div class="pos-layout">
 
@@ -86,16 +165,13 @@ require_once 'includes/header.php';
 
       <!-- ===== QUICK FILTER KATEGORI ===== -->
       <div style="padding: 10px 16px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #e5e7eb;">
-        <button type="button" class="btn btn-sm btn-primary filter-kategori" data-kategori="">
-          Semua
-        </button>
+        <button type="button" class="btn btn-sm btn-primary filter-kategori" data-kategori="">Semua</button>
         <?php foreach (['Minuman', 'Makanan', 'ATK'] as $kb): ?>
           <button type="button" class="btn btn-sm btn-outline filter-kategori" data-kategori="<?= e($kb) ?>">
             <?= e($kb) ?>
           </button>
         <?php endforeach; ?>
       </div>
-      <!-- ===== END QUICK FILTER ===== -->
 
       <div class="card-body">
         <div class="produk-grid" id="produkGrid">
@@ -136,12 +212,31 @@ require_once 'includes/header.php';
           </div>
 
           <div class="form-group">
-            <label>Nominal Bayar <span class="req">*</span></label>
-            <input type="number" name="bayar" id="bayarInput" min="0" step="100" placeholder="0" required>
+            <label>Nominal Bayar</label>
+            <input type="number" name="bayar" id="bayarInput" min="0" step="100" placeholder="0">
           </div>
 
-          <div class="kembalian-box">
-            <span>Kembalian</span>
+          <!-- Pilihan Mode Pembayaran -->
+          <div class="form-group" style="margin-top:10px">
+            <label>Mode Pembayaran</label>
+            <div style="display:flex; gap:8px; margin-top:6px">
+              <button type="button" class="btn btn-primary btn-mode" data-mode="tunai" style="flex:1">
+                💵 Tunai
+              </button>
+              <button type="button" class="btn btn-outline btn-mode" data-mode="hutang" style="flex:1">
+                📝 Hutang
+              </button>
+            </div>
+          </div>
+
+          <!-- Input nama hutang (muncul jika mode hutang) -->
+          <div class="form-group" id="namaHutangGroup" style="display:none; margin-top:10px">
+            <label>Nama Orang (Hutang) <span class="req">*</span></label>
+            <input type="text" name="nama_hutang" id="namaHutangInput" placeholder="Contoh: Budi">
+          </div>
+
+          <div class="kembalian-box" id="kembalianBox">
+            <span id="kembalianLabel">Kembalian</span>
             <span id="kembalianText">Rp 0</span>
           </div>
 
@@ -172,12 +267,18 @@ const cartInput = document.getElementById('cartInput');
 const totalText = document.getElementById('totalText');
 const bayarIn   = document.getElementById('bayarInput');
 const kembaliTx = document.getElementById('kembalianText');
+const kembaliLb = document.getElementById('kembalianLabel');
 const cartCount = document.getElementById('cartCount');
+const modeInput = document.getElementById('modeInput');
+const namaGroup = document.getElementById('namaHutangGroup');
+const namaInput = document.getElementById('namaHutangInput');
+
+let currentMode = 'tunai';
 
 const rp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
 
 /* ===== STATE FILTER ===== */
-let filterKategori = '';   // kosong = semua
+let filterKategori = '';
 let filterCari     = '';
 
 /* ===== KLIK PRODUK → TAMBAH KE CART ===== */
@@ -204,8 +305,37 @@ cartList.addEventListener('click', e => {
 });
 
 bayarIn.addEventListener('input', hitungKembalian);
+
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Kosongkan keranjang?')) { for (const k in cart) delete cart[k]; render(); }
+});
+
+/* ===== MODE TOGGLE ===== */
+document.querySelectorAll('.btn-mode').forEach(btn => {
+  btn.addEventListener('click', function() {
+    currentMode = this.dataset.mode;
+    modeInput.value = currentMode;
+
+    document.querySelectorAll('.btn-mode').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    });
+    this.classList.remove('btn-outline');
+    this.classList.add('btn-primary');
+
+    if (currentMode === 'hutang') {
+      namaGroup.style.display = '';
+      namaInput.required = true;
+      kembaliLb.textContent = 'Sisa Hutang';
+      bayarIn.placeholder = '0 (boleh kosong = full hutang)';
+    } else {
+      namaGroup.style.display = 'none';
+      namaInput.required = false;
+      kembaliLb.textContent = 'Kembalian';
+      bayarIn.placeholder = '0';
+    }
+    hitungKembalian();
+  });
 });
 
 /* ===== RENDER CART ===== */
@@ -239,9 +369,16 @@ function render() {
 function hitungKembalian() {
   const total = Object.values(cart).reduce((s, i) => s + i.harga * i.qty, 0);
   const bayar = parseFloat(bayarIn.value) || 0;
-  const kembali = bayar - total;
-  kembaliTx.textContent = rp(kembali > 0 ? kembali : 0);
-  kembaliTx.style.color = kembali < 0 ? '#dc2626' : '';
+
+  if (currentMode === 'hutang') {
+    const sisa = total - bayar;
+    kembaliTx.textContent = rp(sisa > 0 ? sisa : 0);
+    kembaliTx.style.color = '#dc2626';
+  } else {
+    const kembali = bayar - total;
+    kembaliTx.textContent = rp(kembali > 0 ? kembali : 0);
+    kembaliTx.style.color = kembali < 0 ? '#dc2626' : '';
+  }
 }
 
 /* ===== FILTER: CARI + KATEGORI ===== */
@@ -262,10 +399,8 @@ document.getElementById('searchProduk').addEventListener('input', function () {
 /* ===== QUICK FILTER KATEGORI ===== */
 document.querySelectorAll('.filter-kategori').forEach(btn => {
   btn.addEventListener('click', function () {
-    // Update state
     filterKategori = this.dataset.kategori;
 
-    // Update tampilan tombol aktif
     document.querySelectorAll('.filter-kategori').forEach(b => {
       b.classList.remove('btn-primary');
       b.classList.add('btn-outline');
@@ -279,7 +414,37 @@ document.querySelectorAll('.filter-kategori').forEach(btn => {
 
 /* ===== SUBMIT FORM ===== */
 document.getElementById('formKasir').addEventListener('submit', e => {
-  if (!Object.keys(cart).length) { e.preventDefault(); alert('Keranjang masih kosong.'); }
+  if (!Object.keys(cart).length) {
+    e.preventDefault();
+    alert('Keranjang masih kosong.');
+    return;
+  }
+
+  const total = Object.values(cart).reduce((s, i) => s + i.harga * i.qty, 0);
+  const bayar = parseFloat(bayarIn.value) || 0;
+
+  if (currentMode === 'tunai' && bayar < total) {
+    e.preventDefault();
+    alert('Uang bayar kurang dari total. Silakan pilih mode Hutang jika ingin mencatat sebagian sebagai hutang.');
+    return;
+  }
+
+  if (currentMode === 'hutang') {
+    if (bayar >= total) {
+      e.preventDefault();
+      alert('Uang sudah cukup. Gunakan mode Tunai.');
+      return;
+    }
+    if (!namaInput.value.trim()) {
+      e.preventDefault();
+      alert('Nama orang untuk hutang wajib diisi.');
+      namaInput.focus();
+      return;
+    }
+    if (!confirm('Catat transaksi ini?\n\nDibayar: ' + rp(bayar) + '\nSisa hutang: ' + rp(total - bayar) + '\nAtas nama: ' + namaInput.value)) {
+      e.preventDefault();
+    }
+  }
 });
 </script>
 
