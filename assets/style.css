@@ -2052,3 +2052,10 @@ input[type=file] { padding: 8px; cursor: pointer; }
   .login-card h2 { font-size: 20px; }
   .login-card p.sub { font-size: 12px; margin-bottom: 24px; }
 }
+
+/* Form hutang di dashboard — responsif */
+@media (max-width: 768px) {
+  .card-body form .form-grid[style*="1.5fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
