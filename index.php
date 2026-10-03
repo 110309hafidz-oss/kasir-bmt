@@ -43,7 +43,7 @@ for ($i = 6; $i >= 0; $i--) {
     $chartData[]   = (float)($penjualan7Hari[$tgl] ?? 0);
 }
 
-/* ====== QUERY: Total nilai stok produk (pengganti simpanan) ====== */
+/* ====== QUERY: Total nilai stok produk ====== */
 $totalNilaiStok = (float)$pdo->query("SELECT COALESCE(SUM(harga_jual * stok),0) FROM produk")->fetchColumn();
 
 /* ====== QUERY: Pengeluaran 30 hari terakhir per kategori ====== */
@@ -90,18 +90,33 @@ $labaRugi = $pendapatan - $beban;
 $isLaba   = $labaRugi >= 0;
 
 // ============================================
-// HUTANG (READ-ONLY di dashboard)
+// HUTANG (READ-ONLY di dashboard) — dikelompokkan per konsumen
+// Pakai kolom 'sisa' untuk total hutang
 // ============================================
-$hutangAktif = $pdo->query("
-    SELECT h.*, p.nama AS nama_produk, p.satuan
-    FROM hutang h
-    JOIN produk p ON p.id = h.produk_id
-    ORDER BY h.id DESC
+$hutangGroup = $pdo->query("
+    SELECT nama,
+           COUNT(*)           AS jml_item,
+           SUM(qty)           AS total_qty,
+           SUM(harga * qty)   AS total_belanja,
+           SUM(dibayar)       AS total_dibayar,
+           SUM(sisa)          AS total_sisa,
+           MIN(tanggal)       AS tgl_awal,
+           MAX(tanggal)       AS tgl_akhir
+    FROM hutang
+    GROUP BY nama
+    ORDER BY 
+      CASE WHEN SUM(sisa) > 0 THEN 0 ELSE 1 END,
+      MAX(tanggal) DESC,
+      nama ASC
 ")->fetchAll();
 
-$totalHutang = 0;
-foreach ($hutangAktif as $h) {
-    $totalHutang += (float)$h['harga'] * (int)$h['qty'];
+$totalHutang       = 0;
+$totalSudahDibayar = 0;
+$jmlBelumLunas     = 0;
+foreach ($hutangGroup as $h) {
+    $totalHutang       += (float)$h['total_sisa'];
+    $totalSudahDibayar += (float)$h['total_dibayar'];
+    if ((float)$h['total_sisa'] > 0) $jmlBelumLunas++;
 }
 
 require_once 'includes/header.php';
@@ -179,43 +194,62 @@ require_once 'includes/header.php';
   </div>
 </div>
 
-<!-- ===== CARD HUTANG (READ-ONLY) ===== -->
+<!-- ===== CARD HUTANG (READ-ONLY, grouped per konsumen + status) ===== -->
 <div class="card">
   <div class="card-head">
     <h2>📝 Daftar Hutang</h2>
-    <span class="tag tag-red">Total: <?= rupiah($totalHutang) ?></span>
+    <span class="tag <?= $totalHutang > 0 ? 'tag-red' : 'tag-green' ?>">
+      <?= $totalHutang > 0 ? 'Sisa: ' . rupiah($totalHutang) : 'Semua Lunas 🎉' ?>
+    </span>
   </div>
   <div class="card-body">
     <p class="text-muted" style="margin-bottom:14px; font-size:13px;">
       ℹ️ Hutang baru dicatat melalui halaman <a href="kasir.php"><strong>Kasir</strong></a> saat uang bayar kurang.
+      Pelunasan &amp; detail lengkap di halaman <a href="hutang.php"><strong>Hutang</strong></a>.
     </p>
 
-    <?php if (!$hutangAktif): ?>
-      <div class="empty" style="padding:24px 0">Tidak ada hutang aktif. 🎉</div>
+    <?php if (!$hutangGroup): ?>
+      <div class="empty" style="padding:24px 0">Tidak ada data hutang. 🎉</div>
     <?php else: ?>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Nama</th>
-              <th>Produk</th>
-              <th class="text-center">Qty</th>
-              <th class="text-right">Total</th>
-              <th>Keterangan</th>
-              <th>Tanggal</th>
+              <th>Nama Konsumen</th>
+              <th class="text-center">Jml Item</th>
+              <th class="text-right">Total Belanja</th>
+              <th class="text-right">Sudah Dibayar</th>
+              <th class="text-right">Sisa Hutang</th>
+              <th class="text-center">Status</th>
+              <th class="text-center">Aksi</th>
             </tr>
           </thead>
           <tbody>
-          <?php foreach ($hutangAktif as $h):
-            $total = (float)$h['harga'] * (int)$h['qty'];
+          <?php foreach ($hutangGroup as $h):
+            $sisa   = (float)$h['total_sisa'];
+            $lunas  = ($sisa <= 0);
           ?>
-            <tr>
+            <tr <?= $lunas ? 'style="background:#f0fdf4"' : '' ?>>
               <td class="strong"><?= e($h['nama']) ?></td>
-              <td><?= e($h['nama_produk']) ?></td>
-              <td class="text-center"><?= (int)$h['qty'] ?> <?= e($h['satuan']) ?></td>
-              <td class="text-right strong text-danger"><?= rupiah($total) ?></td>
-              <td class="text-muted"><?= e($h['keterangan'] ?: '-') ?></td>
-              <td class="text-muted"><?= date('d/m/Y', strtotime($h['tanggal'])) ?></td>
+              <td class="text-center"><?= (int)$h['jml_item'] ?> produk</td>
+              <td class="text-right"><?= rupiah($h['total_belanja']) ?></td>
+              <td class="text-right text-green"><?= rupiah($h['total_dibayar']) ?></td>
+              <td class="text-right strong <?= $lunas ? 'text-green' : 'text-danger' ?>">
+                <?= $lunas ? '✓ LUNAS' : rupiah($sisa) ?>
+              </td>
+              <td class="text-center">
+                <?php if ($lunas): ?>
+                  <span class="tag tag-green">LUNAS</span>
+                <?php else: ?>
+                  <span class="tag tag-red">BELUM LUNAS</span>
+                <?php endif; ?>
+              </td>
+              <td class="text-center">
+                <a href="hutang.php?nama=<?= urlencode($h['nama']) ?>"
+                   class="btn <?= $lunas ? 'btn-outline' : 'btn-primary' ?> btn-sm">
+                  <?= $lunas ? '🔍 Lihat' : '💳 Bayar' ?>
+                </a>
+              </td>
             </tr>
           <?php endforeach; ?>
           </tbody>

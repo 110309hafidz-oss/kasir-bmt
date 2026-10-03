@@ -6,7 +6,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cart       = json_decode($_POST['cart'] ?? '[]', true) ?: [];
     $bayar      = (float)($_POST['bayar'] ?? 0);
     $keterangan = trim($_POST['keterangan'] ?? '');
-    $mode       = $_POST['mode'] ?? 'tunai'; // 'tunai' atau 'hutang'
+    $mode       = $_POST['mode'] ?? 'tunai';
     $namaHutang = trim($_POST['nama_hutang'] ?? '');
 
     if (!$cart) {
@@ -46,9 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Nominal pembayaran kurang dari total tagihan.');
         }
 
+        /* ============================================================
+           MODE HUTANG — Pilihan 2
+           Semua item tercatat penuh di tabel hutang.
+           Kolom 'dibayar' = porsi DP (proporsional).
+           Kolom 'sisa' = harga - dibayar.
+           Total hutang = SUM(sisa).
+           ============================================================ */
         if ($mode === 'hutang') {
-            // ==== MODE HUTANG ====
-            // Uang yang dibayar sekarang (bisa 0 = full hutang)
             $bayarSekarang = max(0, min($bayar, $total));
             $sisaHutang    = $total - $bayarSekarang;
 
@@ -56,16 +61,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception('Jika uang cukup, gunakan mode Tunai.');
             }
 
-            // 1. Catat transaksi penjualan untuk uang yang dibayar sekarang
+            // 1. Catat transaksi penjualan (DP)
             if ($bayarSekarang > 0) {
                 $kode = generateKode('TRX', $pdo, 'transaksi', 'kode');
                 $pdo->prepare("INSERT INTO transaksi (kode, user_id, jenis, total, bayar, kembalian, keterangan)
                                VALUES (?,?,'penjualan',?,?,0,?)")
-                    ->execute([$kode, user()['id'], $bayarSekarang, $bayarSekarang,
-                               'DP hutang dari ' . $namaHutang]);
+                    ->execute([
+                        $kode,
+                        user()['id'],
+                        $bayarSekarang,
+                        $bayarSekarang,
+                        'DP hutang dari ' . $namaHutang
+                    ]);
                 $trxId = (int)$pdo->lastInsertId();
 
-                // Detail transaksi (proporsional — catat semua item)
                 $insDet = $pdo->prepare("INSERT INTO transaksi_detail (transaksi_id, produk_id, qty, harga, subtotal) VALUES (?,?,?,?,?)");
                 foreach ($cart as $item) {
                     $pid   = (int)$item['id'];
@@ -75,46 +84,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // 2. Kurangi stok & simpan hutang
+            // 2. Kurangi stok untuk semua item
             $updStok = $pdo->prepare("UPDATE produk SET stok = stok - ? WHERE id = ?");
-            $insHutang = $pdo->prepare("INSERT INTO hutang (nama, produk_id, qty, harga, keterangan, tanggal) VALUES (?,?,?,?,?,CURDATE())");
+            foreach ($cart as $item) {
+                $updStok->execute([(int)$item['qty'], (int)$item['id']]);
+            }
+
+            // 3. Simpan hutang SEMUA item penuh, dengan info DP & sisa
+            $insHutang = $pdo->prepare("
+                INSERT INTO hutang (nama, produk_id, qty, harga, dibayar, sisa, keterangan, tanggal)
+                VALUES (?,?,?,?,?,?,?,CURDATE())
+            ");
+
+            $ketHutang = ($keterangan ? $keterangan . ' | ' : '') .
+                         'DP total: ' . rupiah($bayarSekarang);
 
             foreach ($cart as $item) {
-                $pid   = (int)$item['id'];
-                $qty   = (int)$item['qty'];
-                $harga = (float)$produkDb[$pid]['harga_jual'];
-
-                $updStok->execute([$qty, $pid]);
-
-                // Hitung porsi hutang per item (proporsional)
+                $pid          = (int)$item['id'];
+                $qty          = (int)$item['qty'];
+                $harga        = (float)$produkDb[$pid]['harga_jual'];
                 $subtotalItem = $harga * $qty;
-                $porsiHutang  = $sisaHutang > 0
-                    ? ($subtotalItem / $total) * $sisaHutang
+
+                // Porsi DP untuk item ini (proporsional)
+                $porsiDibayar = ($total > 0)
+                    ? ($subtotalItem / $total) * $bayarSekarang
                     : 0;
 
-                if ($porsiHutang > 0) {
-                    $insHutang->execute([
-                        $namaHutang,
-                        $pid,
-                        $qty,
-                        $porsiHutang / $qty, // harga per unit untuk hutang
-                        $keterangan ?: 'Hutang dari kasir'
-                    ]);
-                }
+                // Bulatkan 2 desimal biar rapi
+                $porsiDibayar = round($porsiDibayar, 2);
+                $sisaItem     = $subtotalItem - $porsiDibayar;
+
+                $insHutang->execute([
+                    $namaHutang,
+                    $pid,
+                    $qty,
+                    $harga,
+                    $porsiDibayar,   // kolom baru: dibayar
+                    $sisaItem,       // kolom baru: sisa
+                    $ketHutang
+                ]);
             }
 
             $pdo->commit();
 
             if ($bayarSekarang > 0) {
-                flash('success', 'Pembayaran sebagian ' . rupiah($bayarSekarang) . ' tercatat. Sisa ' . rupiah($sisaHutang) . ' dicatat sebagai hutang ' . $namaHutang . '.');
+                flash('success', 'DP ' . rupiah($bayarSekarang) . ' tercatat. Sisa hutang ' . rupiah($sisaHutang) . ' atas nama ' . $namaHutang . '.');
             } else {
-                flash('success', 'Transaksi dicatat sebagai hutang ' . $namaHutang . ' sebesar ' . rupiah($sisaHutang) . '.');
+                flash('success', 'Transaksi jadi hutang ' . $namaHutang . ' sebesar ' . rupiah($sisaHutang) . '.');
             }
 
             redirect('kasir.php');
         }
 
-        // ==== MODE TUNAI (seperti biasa) ====
+        /* ============================================================
+           MODE TUNAI
+           ============================================================ */
         $kode = generateKode('TRX', $pdo, 'transaksi', 'kode');
         $ins  = $pdo->prepare("INSERT INTO transaksi (kode, user_id, jenis, total, bayar, kembalian, keterangan)
                                VALUES (?,?,'penjualan',?,?,?,?)");
@@ -163,7 +187,6 @@ require_once 'includes/header.php';
         <input type="text" id="searchProduk" placeholder="Cari produk..." style="max-width:230px">
       </div>
 
-      <!-- ===== QUICK FILTER KATEGORI ===== -->
       <div style="padding: 10px 16px; display:flex; gap:8px; flex-wrap:wrap; border-bottom:1px solid #e5e7eb;">
         <button type="button" class="btn btn-sm btn-primary filter-kategori" data-kategori="">Semua</button>
         <?php foreach (['Minuman', 'Makanan', 'ATK'] as $kb): ?>
@@ -216,7 +239,6 @@ require_once 'includes/header.php';
             <input type="number" name="bayar" id="bayarInput" min="0" step="100" placeholder="0">
           </div>
 
-          <!-- Pilihan Mode Pembayaran -->
           <div class="form-group" style="margin-top:10px">
             <label>Mode Pembayaran</label>
             <div style="display:flex; gap:8px; margin-top:6px">
@@ -229,7 +251,6 @@ require_once 'includes/header.php';
             </div>
           </div>
 
-          <!-- Input nama hutang (muncul jika mode hutang) -->
           <div class="form-group" id="namaHutangGroup" style="display:none; margin-top:10px">
             <label>Nama Orang (Hutang) <span class="req">*</span></label>
             <input type="text" name="nama_hutang" id="namaHutangInput" placeholder="Contoh: Budi">
@@ -277,11 +298,9 @@ let currentMode = 'tunai';
 
 const rp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
 
-/* ===== STATE FILTER ===== */
 let filterKategori = '';
 let filterCari     = '';
 
-/* ===== KLIK PRODUK → TAMBAH KE CART ===== */
 grid.addEventListener('click', e => {
   const el = e.target.closest('.produk-item');
   if (!el) return;
@@ -294,7 +313,6 @@ grid.addEventListener('click', e => {
   render();
 });
 
-/* ===== KONTROL QTY DI CART ===== */
 cartList.addEventListener('click', e => {
   const id = e.target.dataset.id;
   if (!id) return;
@@ -310,7 +328,6 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Kosongkan keranjang?')) { for (const k in cart) delete cart[k]; render(); }
 });
 
-/* ===== MODE TOGGLE ===== */
 document.querySelectorAll('.btn-mode').forEach(btn => {
   btn.addEventListener('click', function() {
     currentMode = this.dataset.mode;
@@ -338,7 +355,6 @@ document.querySelectorAll('.btn-mode').forEach(btn => {
   });
 });
 
-/* ===== RENDER CART ===== */
 function render() {
   const items = Object.values(cart);
   if (!items.length) {
@@ -381,7 +397,6 @@ function hitungKembalian() {
   }
 }
 
-/* ===== FILTER: CARI + KATEGORI ===== */
 function applyFilter() {
   const q = filterCari.toLowerCase();
   grid.querySelectorAll('.produk-item').forEach(el => {
@@ -396,7 +411,6 @@ document.getElementById('searchProduk').addEventListener('input', function () {
   applyFilter();
 });
 
-/* ===== QUICK FILTER KATEGORI ===== */
 document.querySelectorAll('.filter-kategori').forEach(btn => {
   btn.addEventListener('click', function () {
     filterKategori = this.dataset.kategori;
@@ -412,7 +426,6 @@ document.querySelectorAll('.filter-kategori').forEach(btn => {
   });
 });
 
-/* ===== SUBMIT FORM ===== */
 document.getElementById('formKasir').addEventListener('submit', e => {
   if (!Object.keys(cart).length) {
     e.preventDefault();
